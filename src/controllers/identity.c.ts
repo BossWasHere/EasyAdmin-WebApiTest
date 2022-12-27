@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 
-import { validateV1Password } from '../utils/security';
+import { generateJWT, validateV1Password } from '../utils/security';
 
 export namespace Identity {
     const nonceMap = new Map<string, string>();
@@ -79,6 +79,15 @@ export namespace Identity {
             });
         }
 
+        const proxyHost = req.headers['x-forwarded-host'];
+        const host = proxyHost ? (proxyHost as string) : req.headers.host;
+
+        if (!host) {
+            return res.status(400).json({
+                error: 'Host header must be provided for token generation',
+            });
+        }
+
         const login = req.body as PasswordLogin | OTPLogin | OpenLogin;
 
         if (login.method === 'password') {
@@ -109,7 +118,7 @@ export namespace Identity {
                 (await validateV1Password(storedPassword + nonce, password))
             ) {
                 return res.json({
-                    token: 'token',
+                    token: generateJWT(clientId, host, 'user'),
                 });
             }
 
@@ -136,7 +145,7 @@ export namespace Identity {
             if (otp === nextOtp.toString()) {
                 generateNewOtp();
                 return res.json({
-                    token: 'token',
+                    token: generateJWT(clientId, host, 'user'),
                 });
             }
 
@@ -161,7 +170,7 @@ export namespace Identity {
             }
 
             return res.json({
-                token: 'token',
+                token: generateJWT(clientId, host, 'user'),
             });
         }
 
