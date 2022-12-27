@@ -37,6 +37,7 @@ export namespace Server {
             | 'tps'
             | 'ram'
             | 'cpu'
+            | 'system-cpu'
             | 'network-throughput';
         collectionTimestamp: number;
         sampleRate: number;
@@ -154,6 +155,8 @@ export namespace Server {
             Array.isArray(req.query.type) ? req.query.type : [req.query.type]
         ) as string[];
 
+        const since = req.query.since ? parseInt(req.query.since as string) : 0;
+
         const types = new Set(rawTypes);
 
         const chartRoot: NetworkChartRoot = {
@@ -169,9 +172,9 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
-                        sampleRate: 1000,
+                        sampleRate: 60000,
                         scale: 'auto',
-                        data: fastRandomTrend(30, 0, 64, 2),
+                        data: fastRandomTrend(30 + 1, 0, 64, 2),
                     });
                     break;
                 }
@@ -179,9 +182,9 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
-                        sampleRate: 1000,
+                        sampleRate: 60000,
                         scale: 'auto',
-                        data: fastRandomTrend(30, 0, 45, 5, 0, 10),
+                        data: fastRandomTrend(30 + 1, 0, 45, 5, 0, 10),
                     });
                     break;
                 }
@@ -191,6 +194,7 @@ export namespace Server {
                         collectionTimestamp: timestamp,
                         sampleRate: 1000,
                         scale: 'auto',
+                        // todo change storage method to allow timestamped data
                         data: fastRandomTrend(30, 0, 20, 1, 18, 20),
                     });
                     break;
@@ -201,7 +205,14 @@ export namespace Server {
                         collectionTimestamp: timestamp,
                         sampleRate: 1000,
                         scale: 'auto',
-                        data: fastRandomTrend(30, 800, 1500, 50),
+                        data: fastRandomTrend(
+                            180 + 1,
+                            800,
+                            2500,
+                            50,
+                            1000,
+                            1300
+                        ),
                     });
                     break;
                 }
@@ -209,9 +220,19 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
-                        sampleRate: 1000,
+                        sampleRate: 10000,
                         scale: 'auto',
-                        data: fastRandomTrend(30, 4, 85, 1),
+                        data: fastRandomTrend(180 + 1, 4, 85, 1, 4, 10),
+                    });
+                    break;
+                }
+                case 'system-cpu': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 10000,
+                        scale: 'auto',
+                        data: fastRandomTrend(180 + 1, 4, 85, 1, 4, 10),
                     });
                     break;
                 }
@@ -219,9 +240,9 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
-                        sampleRate: 1000,
+                        sampleRate: 10000,
                         scale: 'auto',
-                        data: fastRandomTrend(30, 0, 500000, 2500),
+                        data: fastRandomTrend(180 + 1, 0, 6000, 100, 200, 500),
                     });
                     break;
                 }
