@@ -144,14 +144,14 @@ export namespace Server {
             return;
         }
 
-        if (!req.query.types) {
+        if (!req.query.type) {
             return res
                 .status(400)
-                .json({ error: 'Missing types query parameter' });
+                .json({ error: 'Missing type query parameter' });
         }
 
         const rawTypes = (
-            Array.isArray(req.query.types) ? req.query.types : [req.query.types]
+            Array.isArray(req.query.type) ? req.query.type : [req.query.type]
         ) as string[];
 
         const types = new Set(rawTypes);
