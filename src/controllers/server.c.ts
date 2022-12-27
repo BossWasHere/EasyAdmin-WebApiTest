@@ -25,6 +25,31 @@ export namespace Server {
         };
     };
 
+    export type NetworkChartRoot = {
+        serverId: string;
+        charts: NetworkChart[];
+    };
+
+    export type NetworkChart = {
+        type:
+            | 'players'
+            | 'chat-activity'
+            | 'tps'
+            | 'ram'
+            | 'cpu'
+            | 'network-throughput';
+        collectionTimestamp: number;
+        sampleRate: number;
+        scale:
+            | 'auto'
+            | {
+                  min: number;
+                  max: number;
+                  log: number;
+              };
+        data: number[];
+    };
+
     export function setup() {
         serverMap.clear();
         rootServers.clear();
@@ -96,6 +121,142 @@ export namespace Server {
             servers = Array.from(serverMap.values());
         }
 
-        res.json({ roots: Array.from(rootServers), servers });
+        return res.json({ roots: Array.from(rootServers), servers });
     }
+
+    export function getServer(req: Request, res: Response) {
+        const id = req.params.id;
+        const server = serverMap.get(id);
+
+        if (!server) {
+            return res.status(404).json({ error: 'Server not found' });
+        }
+
+        return res.json(server);
+    }
+
+    export function getServerCharts(req: Request, res: Response) {
+        const id = req.params.id;
+        const server = serverMap.get(id);
+
+        if (!server) {
+            res.status(404).json({ error: 'Server not found' });
+            return;
+        }
+
+        if (!req.query.types) {
+            return res
+                .status(400)
+                .json({ error: 'Missing types query parameter' });
+        }
+
+        const rawTypes = (
+            Array.isArray(req.query.types) ? req.query.types : [req.query.types]
+        ) as string[];
+
+        const types = new Set(rawTypes);
+
+        const chartRoot: NetworkChartRoot = {
+            serverId: id,
+            charts: [],
+        };
+
+        const timestamp = Date.now();
+
+        for (const type of types) {
+            switch (type) {
+                case 'players': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 0, 64, 2),
+                    });
+                    break;
+                }
+                case 'chat-activity': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 0, 45, 5, 0, 10),
+                    });
+                    break;
+                }
+                case 'tps': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 0, 20, 1, 18, 20),
+                    });
+                    break;
+                }
+                case 'ram': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 800, 1500, 50),
+                    });
+                    break;
+                }
+                case 'cpu': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 4, 85, 1),
+                    });
+                    break;
+                }
+                case 'network-throughput': {
+                    chartRoot.charts.push({
+                        type,
+                        collectionTimestamp: timestamp,
+                        sampleRate: 1000,
+                        scale: 'auto',
+                        data: fastRandomTrend(30, 0, 500000, 2500),
+                    });
+                    break;
+                }
+            }
+        }
+
+        return res.json(chartRoot);
+    }
+}
+
+function fastRandomTrend(
+    count: number,
+    min: number,
+    max: number,
+    delta: number,
+    startMin?: number,
+    startMax?: number
+) {
+    const array = new Array(count);
+    const deltaRange = delta * 2 + 1;
+
+    startMin = startMin ?? min;
+    startMax = startMax ?? max;
+
+    array[0] = Math.floor(Math.random() * (startMax - startMin + 1) + startMin);
+
+    for (let i = 1; i < count; i++) {
+        array[i] = Math.min(
+            max,
+            Math.max(
+                min,
+                array[i - 1] + Math.floor(Math.random() * deltaRange) - delta
+            )
+        );
+    }
+
+    return array;
 }
