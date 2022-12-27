@@ -193,7 +193,7 @@ export namespace Identity {
             Math.random().toString(36).substring(2, 15);
         nonceMap.set(clientId, nonce);
 
-        res.json({
+        return res.json({
             nonce,
         });
     }
