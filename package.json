@@ -1,15 +1,15 @@
 {
   "name": "easy-admin-webapi-test",
   "version": "1.0.0",
-  "description": "",
+  "description": "Demo API for Easy Admin Web",
   "private": true,
-  "main": "index.js",
+  "main": "./dist/index.js",
   "scripts": {
-    "start": "tsc && node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "start": "pnpm build && node ./dist/index.js",
+    "preinstall": "npx only-allow pnpm"
   },
-  "keywords": [],
-  "author": "",
+  "author": "BossWasHere <22352723+BossWasHere@users.noreply.github.com>",
   "license": "ISC",
   "dependencies": {
     "cors": "^2.8.5",
