@@ -30,6 +30,26 @@ export namespace Server {
         charts: NetworkChart[];
     };
 
+    // export type NetworkChart = {
+    //     type:
+    //         | 'players'
+    //         | 'chat-activity'
+    //         | 'tps'
+    //         | 'ram'
+    //         | 'cpu'
+    //         | 'system-cpu'
+    //         | 'network-throughput';
+    //     collectionTimestamp: number;
+    //     mode: 'sampling' | 'updates';
+    //     sampleRate?: number;
+    //     scale?: {
+    //         min: number;
+    //         max: number;
+    //         log?: number;
+    //     };
+    //     data: number[] | [number, number][];
+    // };
+
     export type NetworkChart = {
         type:
             | 'players'
@@ -40,16 +60,22 @@ export namespace Server {
             | 'system-cpu'
             | 'network-throughput';
         collectionTimestamp: number;
-        sampleRate: number;
-        scale:
-            | 'auto'
-            | {
-                  min: number;
-                  max: number;
-                  log: number;
-              };
-        data: number[];
-    };
+        scale?: {
+            min: number;
+            max: number;
+            log?: number;
+        };
+    } & (
+        | {
+              mode: 'sampling';
+              sampleRate: number;
+              data: number[];
+          }
+        | {
+              mode: 'updates';
+              data: [number, number][];
+          }
+    );
 
     export function setup() {
         serverMap.clear();
@@ -172,8 +198,12 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 60000,
-                        scale: 'auto',
+                        scale: {
+                            min: 0,
+                            max: 64,
+                        },
                         data: fastRandomTrend(30 + 1, 0, 64, 2),
                     });
                     break;
@@ -182,8 +212,8 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 60000,
-                        scale: 'auto',
                         data: fastRandomTrend(30 + 1, 0, 45, 5, 0, 10),
                     });
                     break;
@@ -192,10 +222,18 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
-                        sampleRate: 1000,
-                        scale: 'auto',
-                        // todo change storage method to allow timestamped data
-                        data: fastRandomTrend(30, 0, 20, 1, 18, 20),
+                        mode: 'updates',
+                        data: fastRandomUpdatingTrend(
+                            20,
+                            timestamp,
+                            1800000,
+                            1000,
+                            0,
+                            20,
+                            1,
+                            18,
+                            20
+                        ),
                     });
                     break;
                 }
@@ -203,8 +241,12 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 1000,
-                        scale: 'auto',
+                        scale: {
+                            min: 0,
+                            max: 8192,
+                        },
                         data: fastRandomTrend(
                             180 + 1,
                             800,
@@ -220,8 +262,8 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 10000,
-                        scale: 'auto',
                         data: fastRandomTrend(180 + 1, 4, 85, 1, 4, 10),
                     });
                     break;
@@ -230,8 +272,8 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 10000,
-                        scale: 'auto',
                         data: fastRandomTrend(180 + 1, 4, 85, 1, 4, 10),
                     });
                     break;
@@ -240,8 +282,8 @@ export namespace Server {
                     chartRoot.charts.push({
                         type,
                         collectionTimestamp: timestamp,
+                        mode: 'sampling',
                         sampleRate: 10000,
-                        scale: 'auto',
                         data: fastRandomTrend(180 + 1, 0, 6000, 100, 200, 500),
                     });
                     break;
@@ -260,7 +302,7 @@ function fastRandomTrend(
     delta: number,
     startMin?: number,
     startMax?: number
-) {
+): number[] {
     const array = new Array(count);
     const deltaRange = delta * 2 + 1;
 
@@ -277,6 +319,60 @@ function fastRandomTrend(
                 array[i - 1] + Math.floor(Math.random() * deltaRange) - delta
             )
         );
+    }
+
+    return array;
+}
+
+function fastRandomUpdatingTrend(
+    count: number,
+    startTimestamp: number,
+    timeframe: number,
+    timeframeInterval: number,
+    min: number,
+    max: number,
+    delta: number,
+    startMin?: number,
+    startMax?: number
+): [number, number][] {
+    const array = new Array(count);
+    const deltaRange = delta * 2 + 1;
+
+    const maxPoints = Math.floor(timeframe / timeframeInterval);
+    if (maxPoints < count) {
+        throw new Error(
+            `Not enough points to generate (max ${maxPoints}, requested ${count})`
+        );
+    }
+    const pointsToChangeSet = new Set<number>();
+    while (pointsToChangeSet.size < count - 1) {
+        pointsToChangeSet.add(Math.floor(Math.random() * maxPoints));
+    }
+
+    const pointsToChange = Array.from(pointsToChangeSet).sort((a, b) => a - b);
+    pointsToChange.push(maxPoints);
+
+    startMin = startMin ?? min;
+    startMax = startMax ?? max;
+
+    array[0] = [
+        startTimestamp,
+        Math.floor(Math.random() * (startMax - startMin + 1) + startMin),
+    ];
+
+    for (let i = 1; i < count; i++) {
+        array[i] = [
+            startTimestamp + pointsToChange[i] * timeframeInterval,
+            Math.min(
+                max,
+                Math.max(
+                    min,
+                    array[i - 1][1] +
+                        Math.floor(Math.random() * deltaRange) -
+                        delta
+                )
+            ),
+        ];
     }
 
     return array;
